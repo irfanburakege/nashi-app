@@ -113,8 +113,28 @@ internal static class InteractionChecks
                 Verify(formats is not null&&Caption(formats,"PDF") is not null,"Turkish conversion wheel did not offer PDF");formats?.Close();
             }
             turkishWheel?.Close();L10n.Language="en";
+            window.Height=window.MinHeight;DesktopInput.Pump(300);var page=Children(window).OfType<ScrollViewer>().First(viewer=>viewer.IsVisible);Verify(page.ScrollableHeight>0,"The Home page was not tall enough to test wheel scrolling");
+            DesktopInput.MovePointer(window.PointToScreen(new(window.ActualWidth/2,window.ActualHeight/2)));for(var n=0;n<12;n++){DesktopInput.Wheel(-120);DesktopInput.Pump(40);}Verify(page.VerticalOffset>0,"The mouse wheel did not scroll the Home page");page.ScrollToTop();DesktopInput.Pump(100);
             DesktopInput.Click(Children(window).OfType<Button>().Single(button=>button.Content as string=="Clear"));
             Verify(window.SelectedFiles.Count==0&&paths.All(File.Exists),"Clicking Clear did not remove the remaining selection safely");
+            Verify(GlobalDropWheel.FileChoices("tools",["Slides.pptx"]).Select(choice=>choice.Id).SequenceEqual(["convert:pdf","convert:jpg","convert:png"]),"The Tools drag wheel did not offer conversions for a PPTX file");
+            Verify(GlobalDropWheel.FileChoices("tools",["Photo.png"]).All(choice=>!choice.Id.StartsWith("convert:",StringComparison.Ordinal)),"The Tools drag wheel replaced real tools with conversions");
+            Verify(GlobalDropWheel.FileChoices("tools",["Icon.ico"]).Count==0,"The Tools drag wheel invented choices for an unsupported file");
+            var probe=new GlobalDropWheel("convert",1,(_,_)=>{},()=>null,()=>true);probe.Show();var probeStyle=WindowManagement.Native.GetWindowLongPtr(new System.Windows.Interop.WindowInteropHelper(probe).Handle,-20).ToInt64();probe.Close();
+            Verify((probeStyle&0x08000000)!=0,"The hidden drop wheel can take keyboard focus from the app being dragged in");
+            // A Shift-drag in a fullscreen game (sprinting while aiming in Roblox) must never open a wheel above the game.
+            using(var gestures=new GlobalDragController(window,new PreferencesStore(Path.Combine(Path.GetTempPath(),"Nashi game prefs "+Guid.NewGuid().ToString("N"))),(_,_,_)=>{},()=>{}))
+            {
+                var game=new Window{WindowStyle=WindowStyle.None,ResizeMode=ResizeMode.NoResize,WindowState=WindowState.Maximized,Topmost=true,ShowInTaskbar=false,Background=Brushes.Black};game.Show();game.Activate();DesktopInput.Pump(400);
+                try
+                {
+                    Verify(DesktopGeometry.FullscreenForeground(),"A borderless window covering its monitor was not recognized as a fullscreen game");
+                    var q=game.PointToScreen(new Point(200,200));DesktopInput.MovePointer(q);DesktopInput.HoldMouse(true);DesktopInput.Pump(80);DesktopInput.Hold(Key.LeftShift,true);
+                    try{DesktopInput.MovePointer(new(q.X+60,q.Y+10));DesktopInput.Pump(300);Verify(gestures.ActiveWheel is null,"A Shift-drag over a fullscreen game opened the drop wheel");}
+                    finally{DesktopInput.HoldMouse(false);DesktopInput.Hold(Key.LeftShift,false);DesktopInput.Pump(200);}
+                }
+                finally{game.Close();DesktopInput.Pump(200);}
+            }
         }
         finally
         {
