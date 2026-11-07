@@ -7,6 +7,9 @@ internal static class ParityChecks
 {
     public static void Run(Action<bool,string> check,string root)
     {
+        var pictures=Directory.CreateDirectory(Path.Combine(root,"Office HTML pictures")).FullName;File.WriteAllBytes(Path.Combine(pictures,"Source_html_1.png"),[0x89,0x50,0x4E,0x47]);File.WriteAllBytes(Path.Combine(root,"Outside.png"),[1,2,3]);
+        var page=OfficeDocuments.InlineImages("<img src=\"Source_html_1.png\"/><img src=\"..%2FOutside.png\"/><img src=\"../Outside.png\"/><img src=\"Missing.png\"/>",pictures);
+        check(page.Contains("src=\"data:image/png;base64,iVBORw==\"")&&page.Contains("..%2FOutside.png")&&page.Contains("../Outside.png")&&page.Contains("Missing.png"),"Office HTML export did not embed its own pictures, or read a file outside its folder");
         var characterDefaults=Path.Combine(root,"Character style defaults.docx");using(var archive=ZipFile.Open(characterDefaults,ZipArchiveMode.Create))
         {
             void Part(string name,string text){using var writer=new StreamWriter(archive.CreateEntry(name).Open(),new UTF8Encoding(false));writer.Write(text);}

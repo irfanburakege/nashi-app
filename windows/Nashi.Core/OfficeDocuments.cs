@@ -13,6 +13,13 @@ public sealed partial class OfficeDocuments(string office,string deno,string ass
     private static string Escape(string value)=>WebUtility.HtmlEncode(value);
     private static readonly TimeSpan ConversionTimeout=TimeSpan.FromMinutes(5);
     public const string TimeoutMessage="Office did not finish converting this document within 5 minutes. Try again, or cancel and choose another format.";
+    // LibreOffice writes HTML pictures as sibling files (Source_html_1a2b.jpg) that only exist in its temporary job folder.
+    // Embed the ones next to the page so the exported HTML keeps its images, like the Markdown export does.
+    public static string InlineImages(string html,string folder)=>Regex.Replace(html,@"(\ssrc\s*=\s*)([""'])([^""'/\\:?#]+)\2",match=>
+    {
+        var name=WebUtility.UrlDecode(match.Groups[3].Value);if(name!=Path.GetFileName(name))return match.Value;var file=Path.Combine(folder,name);var mime=Path.GetExtension(file).ToLowerInvariant() switch{".jpg" or ".jpeg"=>"image/jpeg",".png"=>"image/png",".gif"=>"image/gif",".bmp"=>"image/bmp",".svg"=>"image/svg+xml",_=>null};
+        return mime is null||!File.Exists(file)?match.Value:match.Groups[1].Value+match.Groups[2].Value+"data:"+mime+";base64,"+Convert.ToBase64String(File.ReadAllBytes(file))+match.Groups[2].Value;
+    },RegexOptions.IgnoreCase,TimeSpan.FromSeconds(5));
     public async Task<string> OfficeAsync(string input,string format,string outputDirectory,CancellationToken token)
     {
         Directory.CreateDirectory(outputDirectory);// LibreOffice creates deeply nested profile/cache paths. Keep its job short
@@ -34,7 +41,7 @@ public sealed partial class OfficeDocuments(string office,string deno,string ass
             using var limit=CancellationTokenSource.CreateLinkedTokenSource(token);limit.CancelAfter(ConversionTimeout);ProcessResult result;
             try{result=await ProcessRunner.RunAsync(office,args,limit.Token);}
             catch(OperationCanceledException)when(!token.IsCancellationRequested){throw new TimeoutException(TimeoutMessage);}
-            var output=Path.Combine(rendered,Path.GetFileNameWithoutExtension(input)+"."+(format=="tsv"?"csv":format));if(!File.Exists(output)||new FileInfo(output).Length==0)throw new IOException("Office could not convert this document to "+format.ToUpperInvariant()+". "+(result.Error+" "+result.Output).Trim());var destination=SafePaths.Unique(outputDirectory,Path.GetFileNameWithoutExtension(original)+"."+(format=="tsv"?"csv":format));File.Move(output,destination);return destination;
+            var output=Path.Combine(rendered,Path.GetFileNameWithoutExtension(input)+"."+(format=="tsv"?"csv":format));if(!File.Exists(output)||new FileInfo(output).Length==0)throw new IOException("Office could not convert this document to "+format.ToUpperInvariant()+". "+(result.Error+" "+result.Output).Trim());if(format=="html")await File.WriteAllTextAsync(output,InlineImages(await File.ReadAllTextAsync(output,token),rendered),token);var destination=SafePaths.Unique(outputDirectory,Path.GetFileNameWithoutExtension(original)+"."+(format=="tsv"?"csv":format));File.Move(output,destination);return destination;
         }
         finally{if(Directory.Exists(job))Directory.Delete(job,true);}
     }
