@@ -73,6 +73,7 @@ public partial class App:Application
         }
         if(e.Args.Length==2&&e.Args[0]=="--apply-update"){try{Shutdown(UpdateInstaller.Apply(e.Args[1]));}catch(Exception error){UseSavedLanguage();MessageBox.Show(L10n.Text(error.Message),L10n.Text("Nashi update could not finish"));Shutdown(1);}return;}
         if(e.Args.Contains("--verify-update-state")){try{ShutdownMode=ShutdownMode.OnExplicitShutdown;SmokeTests.VerifyUpdateState();Shutdown(0);}catch(Exception error){Console.Error.WriteLine(error);Shutdown(1);}return;}
+        if(e.Args.Contains("--check-markitdown")){try{ShutdownMode=ShutdownMode.OnExplicitShutdown;MarkItDownChecks.Run();Shutdown(0);}catch(Exception error){Console.Error.WriteLine(error);Shutdown(1);}return;}
         if(e.Args.Contains("--smoke-test-file-actions"))
         {
             IsSmokeTest=true;ShutdownMode=ShutdownMode.OnExplicitShutdown;
