@@ -7,6 +7,8 @@ public static class MarkItDownConversion
 {
     public const string ToolId="markitdown";
     public const string Title="Markdown (MarkItDown)";
+    // Short wheel label: "Markdown (MarkItDown)" breaks mid-word in a wheel with six or more tools.
+    public const string WheelTitle="Markdown";
     private static readonly string[] Supported=["pdf","docx","pptx","xlsx","xls","html","csv","json","xml","epub","ipynb","msg","zip"];
 
     public static bool Supports(IReadOnlyList<string> inputs)=>inputs.Count>0&&inputs.All(p=>File.Exists(p)&&Supported.Contains(FeatureCatalog.Extension(p)));

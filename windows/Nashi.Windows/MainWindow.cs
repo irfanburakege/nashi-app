@@ -210,7 +210,7 @@ public sealed partial class MainWindow:Window
     {
         var choices=FeatureCatalog.Tools(files).Select(id=>new ToolChoice(id switch{"cropImage"=>"crop","annotateImage"=>"annotate","mergePDF"=>"mergePDFs",_=>id},FeatureCatalog.ToolNames[id],ToolSymbol(id))).ToList();
         // Fork-only: MarkItDown stays out of FeatureCatalog so the Mac parity contract is unchanged.
-        if(MarkItDownConversion.Supports(files))choices.Add(new(MarkItDownConversion.ToolId,MarkItDownConversion.Title,ToolSymbol(MarkItDownConversion.ToolId)));
+        if(MarkItDownConversion.Supports(files))choices.Add(new(MarkItDownConversion.ToolId,MarkItDownConversion.WheelTitle,ToolSymbol(MarkItDownConversion.ToolId)));
         return choices;
     }
     private void Refresh()
