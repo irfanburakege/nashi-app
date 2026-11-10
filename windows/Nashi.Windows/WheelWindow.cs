@@ -72,8 +72,8 @@ public sealed class WheelWindow:Window
         for(var i=0;i<count;i++)
         {
             var choice=tools[i];var angle=(WheelPresentation.StartAngle(count)+360d*i/count)*Math.PI/180;var half=(180d/count-1)*Math.PI/180;var a=angle-half;var b=angle+half;
-            Point P(double r,double v)=>new(270+r*Math.Cos(v),270+r*Math.Sin(v));
-            var geometry=new StreamGeometry();using(var g=geometry.Open()){g.BeginFigure(P(108,a),true,true);g.LineTo(P(250,a),true,false);g.ArcTo(P(250,b),new Size(250,250),0,b-a>Math.PI,SweepDirection.Clockwise,true,false);g.LineTo(P(108,b),true,false);g.ArcTo(P(108,a),new Size(108,108),0,b-a>Math.PI,SweepDirection.Counterclockwise,true,false);}geometry.Freeze();
+
+            var geometry=WheelPresentation.Petal(count,a,b);geometry.Freeze();
             var path=new System.Windows.Shapes.Path{Data=geometry,Fill=Theme.Brush("Inset"),Stroke=Theme.Brush("Line"),StrokeThickness=1};canvas.Children.Add(path);sectors.Add(path);
             var (label,location)=WheelPresentation.Caption(choice,geometry,angle,half,count);
             var button=new Button{Style=(Style)Application.Current.FindResource("WheelLabelButton"),Content=label,Width=label.DesiredSize.Width,Height=label.DesiredSize.Height,Background=Brushes.Transparent,Foreground=Theme.Brush("Ink"),Padding=new(0),BorderThickness=new(0)};Canvas.SetLeft(button,location.X-button.Width/2);Canvas.SetTop(button,location.Y-button.Height/2);canvas.Children.Add(button);buttons.Add(button);var index=i;

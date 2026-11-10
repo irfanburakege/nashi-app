@@ -298,7 +298,7 @@ internal static class UIAudit
             "settings.general" or "settings.formats" or "settings.updates" => subject is SettingsWindow &&
                 Descendants<ListBox>(subject).Any(list => Equals(list.SelectedItem, capture.Scene.Split('.')[1] switch { "formats" => "Formats", "updates" => "Updates", _ => "General" })),
             "wheel.pdf-multiple" => subject is WheelWindow && owner.SelectedFiles.SequenceEqual(fixtures.Pdfs) &&
-                Descendants<System.Windows.Shapes.Path>(subject).Count(path => path.Data is StreamGeometry) == FeatureCatalog.Tools(fixtures.Pdfs).Length,
+                Descendants<System.Windows.Shapes.Path>(subject).Count(path => path.Data is StreamGeometry) == FeatureCatalog.Tools(fixtures.Pdfs).Length + (MarkItDownConversion.Supports(fixtures.Pdfs) ? 1 : 0),
             "editor.crop-image" => subject is ToolEditor crop && crop.FieldForTest("Width").Text == fixtures.Bitmap.PixelWidth.ToString(CultureInfo.CurrentCulture),
             "editor.annotate-image" => subject is ToolEditor && Descendants<ComboBox>(subject).Any(combo => Equals(combo.SelectedItem, "Marker")),
             "editor.frame-image" => subject is ToolEditor frame && frame.UIAuditPreviewReady &&
@@ -352,7 +352,8 @@ internal static class UIAudit
         var canvas = Descendants<Canvas>(wheel).FirstOrDefault();
         var petals = canvas?.Children.OfType<System.Windows.Shapes.Path>().Where(path => path.Data is StreamGeometry).ToArray() ?? [];
         var captions = canvas?.Children.OfType<Button>().Take(petals.Length).ToArray() ?? [];
-        var fits = petals.Length == 5 && captions.Length == petals.Length;
+        // Five Nashi PDF tools, plus Markdown (MarkItDown) in this fork.
+        var fits = petals.Length == 6 && captions.Length == petals.Length;
         if (canvas is not null)
         for (var index = 0; index < captions.Length; index++)
         {

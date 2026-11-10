@@ -10,6 +10,14 @@ internal static class WheelPresentation
     internal static double StartAngle(int count)=>count==3?-180:-90;
     internal static Preferences Preferences{get;set;}=new();
     internal static Brush Backdrop{get{var brush=Theme.Brush("Surface").Clone();brush.Opacity=Preferences.WheelFinish=="glass"?.95:1;return brush;}}
+    // One wheel slice between angles a and b (radians). A single choice gets a whole ring: a 358° slice leaves a seam line.
+    internal static Geometry Petal(int count,double a,double b)
+    {
+        if(count==1)return new GeometryGroup{FillRule=FillRule.EvenOdd,Children={new EllipseGeometry(new Point(270,270),250,250),new EllipseGeometry(new Point(270,270),108,108)}};
+        Point P(double r,double v)=>new(270+r*Math.Cos(v),270+r*Math.Sin(v));
+        var geometry=new StreamGeometry();using(var g=geometry.Open()){g.BeginFigure(P(108,a),true,true);g.LineTo(P(250,a),true,false);g.ArcTo(P(250,b),new Size(250,250),0,b-a>Math.PI,SweepDirection.Clockwise,true,false);g.LineTo(P(108,b),true,false);g.ArcTo(P(108,a),new Size(108,108),0,b-a>Math.PI,SweepDirection.Counterclockwise,true,false);}
+        return geometry;
+    }
     internal static double LabelRadius(int count,double half)=>count<=2?180:4*Math.Sin(half)*(Math.Pow(250,3)-Math.Pow(108,3))/(6*half*(250*250-108*108));
     internal static (StackPanel Label,Point Center) Caption(ToolChoice choice,Geometry petal,double angle,double half,int count)
     {
