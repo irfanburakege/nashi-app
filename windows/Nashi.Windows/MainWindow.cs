@@ -208,7 +208,10 @@ public sealed partial class MainWindow:Window
     private bool Audio=>All(["mp3","m4a","wav","flac","ogg","opus","aiff","aif","wma","aac"]);
     private IReadOnlyList<ToolChoice> Choices()
     {
-        return FeatureCatalog.Tools(files).Select(id=>new ToolChoice(id switch{"cropImage"=>"crop","annotateImage"=>"annotate","mergePDF"=>"mergePDFs",_=>id},FeatureCatalog.ToolNames[id],ToolSymbol(id))).ToArray();
+        var choices=FeatureCatalog.Tools(files).Select(id=>new ToolChoice(id switch{"cropImage"=>"crop","annotateImage"=>"annotate","mergePDF"=>"mergePDFs",_=>id},FeatureCatalog.ToolNames[id],ToolSymbol(id))).ToList();
+        // Fork-only: MarkItDown stays out of FeatureCatalog so the Mac parity contract is unchanged.
+        if(MarkItDownConversion.Supports(files))choices.Add(new(MarkItDownConversion.ToolId,MarkItDownConversion.Title,ToolSymbol(MarkItDownConversion.ToolId)));
+        return choices;
     }
     private void Refresh()
     {
@@ -251,6 +254,7 @@ public sealed partial class MainWindow:Window
             SetBusy(true);var imageSelection=Images;var mediaSelection=Video||Audio;var selected=files.ToArray();MediaInfo? info=null;BitmapSource? preview=null;var input=selected[0];
             if(choice.Id=="removeMetadata"){SetBusy(false);await EditMetadataAsync(selected);return;}
             if(choice.Id=="readQRCode"){SetBusy(false);await ReadQrAsync(selected);return;}
+            if(choice.Id==MarkItDownConversion.ToolId){SetBusy(false);await RunAsync((destination,p,t)=>MarkItDownConversion.ConvertAsync(selected,destination,p,t),MarkItDownConversion.Title);return;}
             if(!imageSelection&&!mediaSelection&&choice.Id is not ("extractArchive" or "unzip")){SetBusy(false);await EditDocumentAsync(choice,selected,requestedFormat);return;}
             if(imageSelection)preview=ImageEngine.Load(input);
             else if(mediaSelection)
