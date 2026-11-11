@@ -103,7 +103,7 @@ public partial class App:Application
         if(!instance.Primary){ShutdownMode=ShutdownMode.OnExplicitShutdown;_ = ForwardAndExit(paths);return;}
         // Float shelves have no owner. Closing Nashi (not hiding it to the tray) must end the
         // process instead of leaving it behind a shelf with a closed main window.
-        var window=new MainWindow(paths,offerToolSetup:!e.Args.Contains("--background"));MainWindow=window;ShutdownMode=ShutdownMode.OnMainWindowClose;instance.Start(incoming=>Dispatcher.BeginInvoke(()=>window.AcceptLaunch(incoming)));window.Show();
+        var window=new MainWindow(paths,offerToolSetup:!e.Args.Contains("--background"));MainWindow=window;ShutdownMode=ShutdownMode.OnMainWindowClose;instance.Start(incoming=>Dispatcher.BeginInvoke(()=>window.AcceptLaunch(incoming)));window.Show();MarkItDownUpdateCheck.Start();
         windowManagement=new WindowManagement(notice:message=>MessageBox.Show(L10n.Text(message),L10n.Text("Window arrangement"),MessageBoxButton.OK,MessageBoxImage.Information),isEnabled:()=>window.WindowManagementEnabled);
     }
     internal static void UseSavedLanguage(Func<string>? readLanguage=null)
