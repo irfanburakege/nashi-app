@@ -1,0 +1,62 @@
+name: Fork Windows release
+# Builds the Windows app from this fork, signs it with FORK_UPDATE_KEY and publishes
+# Nashi.zip + windows-update.json, which the in-app "Update from my fork" button reads.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (must be higher than the installed one, e.g. 0.7.17)'
+        required: true
+permissions:
+  contents: write
+jobs:
+  release:
+    if: github.repository == 'irfanburakege/nashi-app'
+    runs-on: windows-2025
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1
+        with:
+          dotnet-version: '10.0.x'
+      - name: Publish
+        shell: pwsh
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if ($env:VERSION -notmatch '^\d+\.\d+\.\d+(\.\d+)?$') { throw 'Invalid version' }
+          dotnet publish windows/Nashi.Windows -c Release -o build/windows/Nashi -p:Version=$env:VERSION
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Compress-Archive -Path build/windows/Nashi/* -DestinationPath build/Nashi.zip
+      - name: Sign and write manifest
+        shell: pwsh
+        env:
+          VERSION: ${{ inputs.version }}
+          FORK_UPDATE_KEY: ${{ secrets.FORK_UPDATE_KEY }}
+          REPO: ${{ github.repository }}
+        run: |
+          if (!$env:FORK_UPDATE_KEY) { throw 'Add the FORK_UPDATE_KEY repository secret first' }
+          python -m pip install --quiet cryptography
+          @'
+          import base64, json, os
+          from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+          key = Ed25519PrivateKey.from_private_bytes(base64.b64decode(os.environ["FORK_UPDATE_KEY"].strip()))
+          data = open("build/Nashi.zip", "rb").read()
+          v = os.environ["VERSION"]
+          json.dump({"version": v,
+                     "url": f"https://github.com/{os.environ['REPO']}/releases/download/v{v}/Nashi.zip",
+                     "length": len(data),
+                     "edSignature": base64.b64encode(key.sign(data)).decode()},
+                    open("build/windows-update.json", "w"))
+          '@ | Set-Content sign.py
+          python sign.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Create release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          gh release create "v$env:VERSION" build/Nashi.zip build/windows-update.json -R $env:GITHUB_REPOSITORY --title "Nashi $env:VERSION (fork)" --notes "Fork build" --latest
